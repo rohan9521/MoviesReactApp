@@ -4,13 +4,28 @@ import 'bootstrap/dist/css/bootstrap.css';
 import Banner from './components/Banner';
 import Navbar from './components/Navbar';
 import Movies from './components/Movies';
+import Favourites from './components/Favourites';
+import { BrowserRouter as Router, Switch, Route, Routes } from 'react-router-dom';
 
 function App() {
   return (
     <>
-      <Navbar/>
-      <Banner/>
-      <Movies/>
+
+      <Router>
+        <Navbar />
+        <Routes>
+
+          <Route path='/' element={
+            <>
+              <Banner />
+              <Movies />
+            </>
+          }>
+          </Route>
+
+          <Route path='/favourites' Component={Favourites} />
+        </Routes>
+      </Router>
     </>
   );
 }
