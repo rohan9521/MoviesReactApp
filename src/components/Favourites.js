@@ -10,15 +10,15 @@ export default class Favourites extends Component {
             seachText: '',
             currPage: 1,
             parr: [],
-            currLimit: ''
+            currLimit: 1
         }
     }
 
     componentDidMount() {
-        console.log("from local storage" + localStorage.getItem("favouritesMovieList"))
+
         let favMovies = []
-        console.log(Object.keys(JSON.parse(localStorage.getItem("favouritesMovieList"))))
-        favMovies = [...Object.values(JSON.parse(localStorage.getItem("favouritesMovieList") || "[]"))]
+        favMovies = JSON.parse(localStorage.getItem("favouritesMovieList") || "[]")
+        console.log("localStorage" + favMovies)
         this.setState({ favMovies: [...favMovies] })
         let genreids = {
             28: 'Action', 12: 'Adventure', 16: 'Animation', 35: 'Comedy', 80: 'Crime', 99: 'Documentary', 18: 'Drama', 10751: 'Family', 14: 'Fantasy', 36: 'History',
@@ -26,32 +26,36 @@ export default class Favourites extends Component {
         };
         let genresList = []
 
-        favMovies.map((movie) => {
+        favMovies.forEach((movie) => {
             if (!genresList.includes(genreids[movie.genre_ids[0]])) {
                 genresList.push(genreids[movie.genre_ids[0]])
-                console.log(genresList.includes(genreids[movie.genre_ids[0]]) + "->" + genresList.length)
             }
         })
-        console.log(genresList.length + "genreslen")
+
 
         this.setState({
             genres: ["All Genres", ...genresList],
         })
     }
 
+    componentWillUnmount() {
+        localStorage.setItem("favouritesMovieList", JSON.stringify(this.state.favMovies || []))
+    }
+
     handleRowSet = (e) => {
-        let tempParr = []
-        for (let i = 0; i < e.target.value; i++)
-            tempParr.push(i + 1)
+        if(e.target.value == 0  )
+            return
+
         this.setState({
             currLimit: e.target.value,
-            parr: tempParr
         })
 
     }
 
-    handleDelete = (movie)=>{
-
+    handleDelete = (movie) => {
+        let temp = this.state.favMovies
+        temp.splice(temp.indexOf(movie), 1)
+        this.setState({ favMovies: temp })
     }
 
     handleSearchTextChange = (event) => {
@@ -59,33 +63,30 @@ export default class Favourites extends Component {
         this.setState({ seachText: event.target.value })
     }
 
-    handlePopularitySortAsc() {
+    handlePopularitySortAsc(isAsc) {
         let temp = this.state.favMovies
+
         temp.sort(function (obj1, obj2) {
-            return obj1.popularity - obj2.popularity
+            return isAsc ? obj1.popularity - obj2.popularity : obj2.popularity - obj1.popularity
         })
+
         this.setState({ favMovies: temp })
+
     }
-    handlePopularitySortDesc() {
+
+    handleRatingSortAsc(isAsc) {
         let temp = this.state.favMovies
+
         temp.sort(function (obj1, obj2) {
-            return obj2.popularity - obj1.popularity
+            return isAsc ? obj1.vote_average - obj2.vote_average : obj2.vote_average - obj1.vote_average
         })
+
         this.setState({ favMovies: temp })
+
     }
-    handleRatingSortAsc() {
-        let temp = this.state.favMovies
-        temp.sort(function (obj1, obj2) {
-            return obj1.vote_average - obj2.vote_average
-        })
-        this.setState({ favMovies: temp })
-    }
-    handleRatingSortDesc() {
-        let temp = this.state.favMovies
-        temp.sort(function (obj1, obj2) {
-            return obj2.vote_average - obj1.vote_average
-        })
-        this.setState({ favMovies: temp })
+
+    handlePageNumberClick = (value) => {
+        this.setState({ currPage: value })
     }
     render() {
         let genreids = {
@@ -94,7 +95,7 @@ export default class Favourites extends Component {
         };
 
         let filter = []
-
+        console.log(this.state.favMovies)
         if (this.state.seachText == '') {
             filter = this.state.favMovies
         } else {
@@ -110,12 +111,18 @@ export default class Favourites extends Component {
             ))
         }
 
-        let limit = this.state.currLimit
+    
 
-        let startI = (this.state.currPage - 1) * limit
-        let endI = startI + limit
+        let startI = (this.state.currPage - 1) * this.state.currLimit
+        let endI = (parseInt(startI) + parseInt(this.state.currLimit))
+
+        let parr = []
+        let numberOfPages = Math.ceil(filter.length / this.state.currLimit)
+        for (let i = 0; i < numberOfPages; i++)
+            parr.push(i + 1)
 
         filter = filter.slice(startI, endI)
+
         return (
             <>
                 <div class="favourite-main">
@@ -124,6 +131,7 @@ export default class Favourites extends Component {
                             <ul class="list-group">
 
                                 {
+
                                     this.state.genres.map((genre) => (
                                         this.state.currGenre == genre ?
                                             <li class="list-group-item" onClick={() => { this.setState({ currGenre: genre }) }} style={{ background: 'blue', color: 'white' }}>{genre}</li> :
@@ -135,7 +143,7 @@ export default class Favourites extends Component {
                         <div class="col">
                             <div class="row">
                                 <input className='input-group-text col-6' placeholder='Search' value={this.state.seachText} onChange={(e) => { this.handleSearchTextChange(e) }}></input>
-                                <input className='input-group-text col-6' placeholder='Rows' value={this.state.currLimit} onChange={(e) => { this.handleRowSet(e) }}></input>
+                                <input className='input-group-text col-6' placeholder='Rows' value={this.state.currLimit} type="number" onChange={(e) => { this.handleRowSet(e) }}></input>
                             </div>
                             <div class="row">
                                 <table class="col-12 table">
@@ -143,8 +151,8 @@ export default class Favourites extends Component {
                                         <tr>
                                             <th scope="col">Title</th>
                                             <th scope="col" >Genre</th>
-                                            <th scope="col" ><i class="fas fa-sort-up" onClick={() => { this.handlePopularitySortAsc() }}></i>Popularity<i onClick={() => { this.handlePopularitySortDesc() }} class="fas fa-sort-down"></i></th>
-                                            <th scope="col" ><i onClick={() => { this.handleRatingSortAsc() }} class="fas fa-sort-up"></i>Rating<i onClick={() => { this.handleRatingSortDesc() }} class="fas fa-sort-down"></i></th>
+                                            <th scope="col" ><i class="fas fa-sort-up" onClick={() => { this.handlePopularitySortAsc(true) }}></i>Popularity<i onClick={() => { this.handlePopularitySortAsc(false) }} class="fas fa-sort-down"></i></th>
+                                            <th scope="col" ><i onClick={() => { this.handleRatingSortAsc(true) }} class="fas fa-sort-up"></i>Rating<i onClick={() => { this.handleRatingSortAsc(false) }} class="fas fa-sort-down"></i></th>
                                             <th scope="col" ></th>
                                         </tr>
                                     </thead>
@@ -157,7 +165,7 @@ export default class Favourites extends Component {
                                                     <td >{genreids[movie.genre_ids[0]]}</td>
                                                     <td >{movie.popularity}</td>
                                                     <td >{movie.vote_average}</td>
-                                                    <td ><button class="btn btn-danger">Delete</button></td>
+                                                    <td ><button class="btn btn-danger" onClick={() => { this.handleDelete(movie) }}>Delete</button></td>
                                                 </tr>
                                             ))
                                         }
@@ -166,13 +174,13 @@ export default class Favourites extends Component {
                             </div>
                             <nav aria-label="Page navigation example">
                                 <ul class="pagination">
-                                    <li class="page-item"><a class="page-link" href="#">Previous</a></li>
+                              
                                     {
-                                        this.state.parr.map((value) => (
-                                            <li class="page-item"><a class="page-link" >{value}</a></li>
+                                        parr.map((value) => (
+                                            <li class="page-item"><a class="page-link" onClick={() => { this.handlePageNumberClick(value) }} >{value}</a></li>
                                         ))
                                     }
-                                    <li class="page-item"><a class="page-link" href="#">Next</a></li>
+                                   
                                 </ul>
                             </nav>
                         </div>
